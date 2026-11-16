@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>nihil</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Mesmas fontes da tela de escolha: títulos em Arial Bold (com ink bleed), textos em Futura Bold;
+       Arimo e Jost só são baixadas onde elas não existem -->
+  <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@700&family=Jost:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Ink bleed: a tinta espalha um pouco, a borda fica irregular e um halo fraco embebe em volta -->
+  <svg class="fx" aria-hidden="true" focusable="false">
+    <filter id="ink" x="-10%" y="-30%" width="120%" height="160%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.55" result="spread"/>
+      <feDisplacementMap in="spread" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feComponentTransfer in="rough" result="bleed">
+        <feFuncA type="linear" slope="2.6" intercept="-0.55"/>
+      </feComponentTransfer>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="soak"/>
+      <feComponentTransfer in="soak" result="halo">
+        <feFuncA type="linear" slope="0.32"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="bleed"/>
+      </feMerge>
+    </filter>
+  </svg>
+
+  <header class="topbar">
+    <a href="#home" class="logo" aria-label="Início">
+      <img src="assets/logo.gif" alt="Logo da marca">
+    </a>
+
+    <button class="peace" id="peace-btn" aria-expanded="false" aria-controls="menu" aria-label="Abrir menu">
+      <svg class="peace-line" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M12 2 L12 22 M12 12 L4.93 19.07 M12 12 L19.07 19.07"/>
+      </svg>
+    </button>
+
+    <nav class="menu" id="menu" aria-label="Menu principal">
+      <a href="#manifesto">Manifesto</a>
+      <a href="#historia">História</a>
+      <a href="#blog">Blog</a>
+    </nav>
+  </header>
+
+  <main id="app">
+
+    <!-- Home: vitrine com as peças em 3D, em fileiras (vitrine.js desenha cada peça no seu espaço) -->
+    <section class="view view-home is-active" data-view="home" aria-labelledby="vitrine-titulo">
+      <h1 class="sr-only" id="vitrine-titulo">Peças nihil</h1>
+      <div class="vitrine-layout">
+        <!-- Tipos de peça: clicar mostra só as peças daquele tipo -->
+        <nav class="tipos" id="tipos" aria-label="Tipos de peça"></nav>
+        <div class="vitrine-col">
+          <ul class="vitrine" id="vitrine"></ul>
+          <p class="vitrine-status" id="vitrine-status">Carregando as peças…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Manifesto -->
+    <section class="view" data-view="manifesto">
+      <div class="manifesto">
+        <div class="manifesto-box">
+          <h1 class="page-title">Manifesto</h1>
+          <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+          <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+          <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- História -->
+    <section class="view" data-view="historia">
+      <div class="page">
+        <h1 class="page-title">História</h1>
+
+        <div class="timeline">
+          <article class="milestone">
+            <div class="photo" style="background-image: url('assets/historia-1.jpg')"></div>
+            <div class="milestone-text">
+              <span class="year">20__</span>
+              <h2>O surgimento</h2>
+              <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis dapibus.</p>
+            </div>
+          </article>
+
+          <article class="milestone">
+            <div class="photo" style="background-image: url('assets/historia-2.jpg')"></div>
+            <div class="milestone-text">
+              <span class="year">20__</span>
+              <h2>Primeiras peças</h2>
+              <p>Sed posuere consectetur est at lobortis. Maecenas faucibus mollis interdum, cras mattis consectetur purus.</p>
+            </div>
+          </article>
+
+          <article class="milestone">
+            <div class="photo" style="background-image: url('assets/historia-3.jpg')"></div>
+            <div class="milestone-text">
+              <span class="year">20__</span>
+              <h2>Processo e materiais</h2>
+              <p>Vestibulum id ligula porta felis euismod semper. Donec ullamcorper nulla non metus auctor fringilla.</p>
+            </div>
+          </article>
+
+          <article class="milestone">
+            <div class="photo" style="background-image: url('assets/historia-4.jpg')"></div>
+            <div class="milestone-text">
+              <span class="year">Hoje</span>
+              <h2>Onde estamos</h2>
+              <p>Nullam quis risus eget urna mollis ornare vel eu leo. Cum sociis natoque penatibus et magnis dis parturient.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Blog -->
+    <section class="view" data-view="blog">
+      <div class="page">
+        <h1 class="page-title">Blog</h1>
+
+        <div class="posts">
+          <article class="post">
+            <p class="post-meta">Técnica · 20__</p>
+            <h2>Lorem ipsum dolor sit amet</h2>
+            <p>Consectetur adipiscing elit. Praesent commodo cursus magna, vel scelerisque nisl consectetur et.</p>
+          </article>
+
+          <article class="post">
+            <p class="post-meta">Estudo · 20__</p>
+            <h2>Sed posuere consectetur est</h2>
+            <p>Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum.</p>
+          </article>
+
+          <article class="post">
+            <p class="post-meta">Material · 20__</p>
+            <h2>Maecenas faucibus mollis</h2>
+            <p>Cras justo odio, dapibus ac facilisis in, egestas eget quam. Nulla vitae elit libero.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Fora do <main>: o desfoque do menu no <main> prenderia estes elementos fixos ao conteúdo -->
+  <canvas class="vitrine-stage" id="vitrine-stage" aria-hidden="true"></canvas>
+  <!-- Arcade: leva para a tela de escolha estilizada como jogo antigo -->
+  <a class="arcade" href="selecao.html" aria-label="Modo arcade: escolher a peça como num jogo antigo">
+    <span class="arcade-sprite" aria-hidden="true"></span>
+    <span class="arcade-label" aria-hidden="true">modo arcade</span>
+  </a>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "delaunator": "https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm"
+    }
+  }
+  </script>
+  <script src="script.js"></script>
+  <script type="module" src="vitrine.js"></script>
+</body>
+</html>

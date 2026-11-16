@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>nihil — escolha sua peça</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Títulos em Arial Bold, textos em Futura Bold, ambas do aparelho; Arimo (mesmas medidas da Arial)
+       e Jost (no estilo da Futura) só são baixadas onde elas não existem -->
+  <link href="https://fonts.googleapis.com/css2?family=Arimo:wght@700&family=Jost:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="selecao.css">
+</head>
+<body>
+
+  <!-- Ink bleed: a tinta espalha um pouco, a borda fica irregular e um halo fraco embebe em volta -->
+  <svg class="fx" aria-hidden="true" focusable="false">
+    <filter id="ink" x="-10%" y="-30%" width="120%" height="160%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="7" result="noise"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.55" result="spread"/>
+      <feDisplacementMap in="spread" in2="noise" scale="1.8" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <feComponentTransfer in="rough" result="bleed">
+        <feFuncA type="linear" slope="2.6" intercept="-0.55"/>
+      </feComponentTransfer>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="soak"/>
+      <feComponentTransfer in="soak" result="halo">
+        <feFuncA type="linear" slope="0.32"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="halo"/>
+        <feMergeNode in="bleed"/>
+      </feMerge>
+    </filter>
+  </svg>
+
+  <canvas id="stage" tabindex="0" aria-label="Peças da nihil em 3D. Use as setas, a rolagem ou deslize para escolher."></canvas>
+
+  <div class="ui">
+    <header class="top">
+      <a href="index.html" class="logo" target="_top" aria-label="Voltar ao início">
+        <img src="assets/logo-nihil-pixel.gif" width="87" height="37" alt="Nihil">
+      </a>
+    </header>
+
+    <button class="nav prev" id="prev" aria-label="Peça anterior">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4 L7 12 L15 20"/></svg>
+    </button>
+    <button class="nav next" id="next" aria-label="Próxima peça">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 L17 12 L9 20"/></svg>
+    </button>
+
+    <!-- Caixa de informações da peça escolhida -->
+    <section class="card" id="info" aria-live="polite">
+      <div class="card-head">
+        <p class="tag"><span class="rar" id="rar"></span><span class="sep">|</span><span id="kind"></span><span class="idx" id="idx"></span></p>
+        <h1 class="name" id="name">nihil</h1>
+      </div>
+      <div class="card-body">
+        <dl class="stats" id="stats"></dl>
+        <!-- Leva para a página da peça na plataforma de vendas (campo "loja" do pecas.json) -->
+        <a class="buy" id="buy" target="_blank" rel="noopener"><span id="buy-txt">Comprar</span><svg viewBox="0 0 4 7" aria-hidden="true"><path d="M0 0h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v1h-1z"/></svg></a>
+      </div>
+    </section>
+
+    <!-- Picker: grade de retratos -->
+    <section class="picker">
+      <p class="picker-title">Escolha sua peça <span id="count"></span></p>
+      <nav class="roster" id="roster" aria-label="Peças"></nav>
+    </section>
+
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <div class="loader" id="loader">Pendurando as peças…</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+      "delaunator": "https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm"
+    }
+  }
+  </script>
+  <script type="module" src="selecao.js"></script>
+</body>
+</html>

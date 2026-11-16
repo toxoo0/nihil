@@ -1,0 +1,752 @@
+:root {
+  --bg: #f3f1ec;
+  --ink: #1c1c1a;
+  --muted: #77736a;
+  --line: #d4d0c7;
+  /* Fontes da tela de escolha (home): títulos em Arial Bold com ink bleed, textos em Futura Bold */
+  --display: Arial, "Arimo", "Helvetica Neue", Helvetica, sans-serif;
+  --sans: "Futura", "Futura PT", "Jost", "Century Gothic", sans-serif;
+  --ink-fx: url(#ink);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-weight: 700;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+}
+
+/* Cursor do site: mão pixelada (assets/cursor.png, desenhada por ferramentas/cursor.py).
+   A ponta do dedo (17, 1) é o ponto do clique. */
+html {
+  cursor: url("assets/cursor.png") 17 1, auto;
+  cursor: -webkit-image-set(url("assets/cursor.png") 1x, url("assets/cursor@2x.png") 2x) 17 1, auto;
+}
+
+a,
+button {
+  cursor: url("assets/cursor.png") 17 1, pointer;
+  cursor: -webkit-image-set(url("assets/cursor.png") 1x, url("assets/cursor@2x.png") 2x) 17 1, pointer;
+}
+
+/* SVG que só guarda o filtro de ink bleed */
+.fx {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Cabeçalho: logo no centro, símbolo da paz à direita */
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  padding: 20px 24px;
+  pointer-events: none;
+}
+
+.topbar > * {
+  pointer-events: auto;
+}
+
+.logo img {
+  width: 120px;
+  height: 120px;
+  margin: -24px 0;
+  object-fit: contain;
+}
+
+.peace {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  width: 66px;
+  height: 66px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #000;
+  transition: transform 0.7s ease;   /* tempo para a volta completa ao abrir o menu */
+}
+
+.peace-line {
+  width: 56px;
+  height: 56px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: butt;
+}
+
+.peace:hover {
+  transform: rotate(15deg);
+}
+
+.peace[aria-expanded="true"] {
+  transform: rotate(360deg);
+}
+
+/* Menu que surge do símbolo */
+
+.menu {
+  position: absolute;
+  top: 112px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.menu a {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.4rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  filter: var(--ink-fx);
+  opacity: 0;
+  transform: translateY(-14px) scale(0.96);
+  transform-origin: top right;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.menu.is-open a {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.menu.is-open a:nth-child(1) { transition-delay: 0.2s; }
+.menu.is-open a:nth-child(2) { transition-delay: 0.32s; }
+.menu.is-open a:nth-child(3) { transition-delay: 0.44s; }
+
+.menu a:hover {
+  font-style: italic;
+}
+
+/* Fundo: fica com blur e ~30% de visibilidade quando o menu está aberto */
+
+main {
+  position: relative;
+  min-height: 100vh;
+  transition: filter 0.7s ease, opacity 0.7s ease;
+}
+
+body.menu-open main {
+  filter: blur(10px);
+  opacity: 0.3;
+}
+
+.view {
+  display: none;
+}
+
+.view.is-active {
+  display: block;
+}
+
+/* Home: vitrine em fundo branco, peças em 3D em fileiras (cabides e trilho invisíveis) */
+
+body[data-view="home"] {
+  background: #fff;
+}
+
+/* Na home a página rola por baixo do cabeçalho: faixa branca atrás do logo */
+body[data-view="home"] .topbar {
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.view-home {
+  padding: 130px 40px 120px;
+}
+
+/* Lista de tipos no canto esquerdo; a grade fica no centro da página (a 3ª coluna, vazia,
+   equilibra a 1ª). Em telas menores a 1ª coluna fica no mínimo e a grade ocupa o resto. */
+.vitrine-layout {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(0, 1440px) minmax(0, 1fr);
+  column-gap: 40px;
+}
+
+.tipos {
+  position: sticky;
+  top: 130px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 16px;
+}
+
+/* Todas iguais; a escolhida (e a do cursor) fica em negrito */
+.tipos button {
+  padding: 2px 0;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.tipos button:hover,
+.tipos button[aria-pressed="true"] {
+  font-weight: 700;
+}
+
+.vitrine {
+  --vao: 64px;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--vao);
+  row-gap: 56px;
+}
+
+.peca {
+  position: relative;
+}
+
+.peca-palco {
+  position: relative;
+  aspect-ratio: 1 / 1;
+}
+
+/* Foto no lugar da peça até o 3D ficar pronto */
+.peca-foto {
+  position: absolute;
+  inset: 34px 10% 6%;
+  width: 80%;
+  height: calc(94% - 34px);
+  object-fit: contain;
+  object-position: top;
+  transition: opacity 0.4s ease;
+}
+
+.peca.pronta .peca-foto {
+  opacity: 0;
+}
+
+.peca-info {
+  margin-top: 34px;   /* espaço da barra de giro (peças de dois lados); igual em todas para alinhar */
+  text-align: center;
+  line-height: 1.35;
+}
+
+.peca-nome {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.peca-meta {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.peca-comprar {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 7px 18px 6px;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--ink);
+}
+
+span.peca-comprar {
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* Comprar: texto e caixa verdes, sem preenchimento (com o link da loja ou ainda sem ele);
+   esgotado fica cinza */
+a.peca-comprar,
+span.peca-comprar.disponivel {
+  border-color: #00ff1e;
+  color: #00ff1e;
+}
+
+/* Peças de dois lados: barra frente/verso embaixo da peça. O pino mostra o lado que aparece
+   (--u: 0 frente, 1 verso, vindo do vitrine.js); arrastar o pino gira a peça. */
+.giro {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - 2px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: ew-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.giro-rot:first-child {
+  opacity: calc(1 - var(--u, 1) * 0.65);
+}
+
+.giro-rot:last-child {
+  opacity: calc(0.35 + var(--u, 1) * 0.65);
+}
+
+.giro-barra {
+  position: relative;
+  width: 96px;
+  height: 2px;
+  margin: 0 6px;   /* o pino nas pontas não encosta nas palavras */
+  background: var(--line);
+}
+
+.giro-pino {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--u, 1) * 100%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  transition: transform 0.15s ease;
+}
+
+.giro:hover .giro-pino,
+.giro.arrastando .giro-pino,
+.giro:focus-visible .giro-pino {
+  transform: translate(-50%, -50%) scale(1.25);
+}
+
+.giro:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Divisão entre as peças à venda e o archive (mostruário: peças esgotadas) */
+.archive {
+  grid-column: 1 / -1;
+  margin: 40px 0 0;
+  text-align: center;
+}
+
+.archive h2 {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: 0.01em;   /* letras juntas: mais condensado */
+  text-transform: uppercase;
+}
+
+.vitrine-status {
+  text-align: center;
+  color: var(--muted);
+}
+
+/* Canvas da vitrine: cobre a tela, atrás do conteúdo; só existe na home */
+.vitrine-stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+  transition: filter 0.7s ease, opacity 0.7s ease;
+}
+
+body:not([data-view="home"]) .vitrine-stage,
+body:not([data-view="home"]) .arcade {
+  display: none;
+}
+
+/* Arcade pixelado no canto: leva para a tela de escolha estilo jogo antigo */
+.arcade {
+  position: fixed;
+  left: 28px;
+  bottom: 24px;
+  z-index: 15;
+  display: block;
+  transition: filter 0.7s ease, opacity 0.7s ease;
+}
+
+.arcade-sprite {
+  display: block;
+  width: 96px;
+  height: 168px;
+  background: url("assets/arcade.png") 0 0 / 200% 100% no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(4px 4px 0 rgba(20, 18, 31, 0.18));
+  animation: arcade-luzes 1.1s steps(1, end) infinite;
+  transition: transform 0.15s ease;
+}
+
+@keyframes arcade-luzes {
+  50% { background-position: 100% 0; }
+}
+
+/* Etiqueta ao lado do arcade, só no hover; fora do fluxo para não aumentar a área do link */
+.arcade-label {
+  position: absolute;
+  left: calc(100% + 12px);
+  bottom: 10px;
+  pointer-events: none;
+  padding: 5px 10px 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--ink);
+  color: #fff;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.arcade:hover .arcade-sprite,
+.arcade:focus-visible .arcade-sprite {
+  transform: translateY(-4px);
+  animation-duration: 0.4s;
+}
+
+.arcade:hover .arcade-label,
+.arcade:focus-visible .arcade-label {
+  opacity: 1;
+  transform: none;
+}
+
+body.menu-open .vitrine-stage,
+body.menu-open .arcade {
+  filter: blur(10px);
+  opacity: 0.3;
+}
+
+body.menu-open .arcade {
+  pointer-events: none;
+}
+
+/* Páginas internas */
+
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 150px 24px 96px;
+}
+
+.page-title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  filter: var(--ink-fx);
+  text-align: center;
+  margin-bottom: 64px;
+}
+
+/* Manifesto */
+
+.manifesto {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 130px 24px 60px;
+}
+
+.manifesto-box {
+  max-width: 680px;
+  padding: clamp(32px, 6vw, 64px);
+  border: 1px solid var(--ink);
+  text-align: center;
+}
+
+.manifesto-box .page-title {
+  margin-bottom: 40px;
+}
+
+.manifesto-box p {
+  font-size: 1.15rem;
+  line-height: 1.7;
+  margin-bottom: 1.1em;
+}
+
+.manifesto-box p:last-child {
+  margin-bottom: 0;
+}
+
+/* História */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 96px;
+}
+
+.milestone {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 48px;
+  align-items: center;
+}
+
+.milestone:nth-child(even) .photo {
+  order: 2;
+}
+
+.photo {
+  aspect-ratio: 4 / 5;
+  background-color: #e3dfd6;
+  background-size: cover;
+  background-position: center;
+}
+
+.year {
+  display: block;
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.milestone h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.15;
+  filter: var(--ink-fx);
+  margin-bottom: 12px;
+}
+
+/* Blog */
+
+.posts {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.post {
+  border-top: 1px solid var(--line);
+  padding-top: 28px;
+}
+
+.post-meta {
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.post h2 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.9rem;
+  line-height: 1.15;
+  filter: var(--ink-fx);
+  margin-bottom: 10px;
+}
+
+/* Responsivo */
+
+/* Telas médias: o arcade fica menor para cobrir menos a grade */
+@media (max-width: 1300px) {
+  .arcade-sprite {
+    width: 72px;
+    height: 126px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .vitrine {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .view-home {
+    padding: 110px 20px 150px;   /* abaixo do símbolo da paz */
+  }
+
+  .vitrine-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tipos {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 18px;
+    padding-top: 0;
+    margin-bottom: 28px;
+  }
+
+  .tipos button {
+    font-size: 0.74rem;
+  }
+
+  .archive {
+    margin-top: 24px;
+  }
+
+  .archive h2 {
+    font-size: 1.1rem;
+  }
+
+  .vitrine {
+    --vao: 20px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 40px;
+  }
+
+  .peca-nome {
+    font-size: 0.85rem;
+  }
+
+  .peca-info {
+    margin-top: 28px;
+  }
+
+  .peca-meta {
+    font-size: 0.72rem;
+  }
+
+  .giro {
+    gap: 6px;
+    padding: 6px 4px;
+    font-size: 0.58rem;
+  }
+
+  .giro-barra {
+    width: 52px;
+  }
+
+  .arcade {
+    left: 14px;
+    bottom: 14px;
+  }
+
+  .arcade-sprite {
+    width: 60px;
+    height: 105px;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    padding: 16px 20px;
+  }
+
+  .logo img {
+    width: 90px;
+    height: 90px;
+    margin: -18px 0;
+  }
+
+  .peace {
+    top: 16px;
+    right: 20px;
+  }
+
+  .menu {
+    top: 104px;
+    right: 20px;
+  }
+
+  .menu a {
+    font-size: 1.25rem;
+  }
+
+  .page {
+    padding: 130px 20px 72px;
+  }
+
+  .manifesto {
+    padding: 120px 20px 48px;
+  }
+
+  .milestone {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .milestone:nth-child(even) .photo {
+    order: 0;
+  }
+
+  .timeline {
+    gap: 72px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main,
+  .menu a,
+  .peace,
+  .vitrine-stage,
+  .arcade-sprite {
+    transition: none;
+  }
+
+  .arcade-sprite {
+    animation: none;
+  }
+}

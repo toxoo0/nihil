@@ -1,0 +1,7 @@
+# Fica só no computador: cópias de segurança, vídeos e configurações locais
+backups/
+videos/
+.claude/
+__pycache__/
+Thumbs.db
+desktop.ini

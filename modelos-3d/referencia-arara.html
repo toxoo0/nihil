@@ -1,0 +1,1380 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arara Nihil</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@300;400&display=swap">
+
+<style>
+/* Layout: full-bleed WebGL showroom; text and the few controls sit in the corners */
+:root {
+  --bg: #141312;
+  --fg: #ece7df;
+  --muted: #8d877e;
+  --faint: rgba(236, 231, 223, 0.18);
+  --accent: #d6553d;
+  --display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+  --mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--fg); }
+body { font-family: var(--mono); -webkit-font-smoothing: antialiased; }
+
+#scene {
+  position: fixed; inset: 0;
+  width: 100%; height: 100%;
+  display: block;
+  touch-action: none;
+  outline: none;
+}
+#scene.over { cursor: pointer; }
+#scene.grab { cursor: grab; }
+#scene.grabbing { cursor: grabbing; }
+
+.ui {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding-block: max(22px, env(safe-area-inset-top, 0px)) max(22px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 720px) {
+  .ui {
+    padding-left: max(36px, env(safe-area-inset-left, 0px));
+    padding-right: max(36px, env(safe-area-inset-right, 0px));
+    padding-block: 30px;
+  }
+}
+
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; gap: 16px; }
+.brand { font-family: var(--display); font-style: italic; font-size: 1.7rem; line-height: 1; letter-spacing: 0.01em; }
+.meta { justify-self: end; }
+.meta, .idx, .kind, .hint, .val, .mode {
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.modes { display: flex; gap: 18px; pointer-events: auto; }
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+button:focus-visible { outline: 1px solid var(--fg); outline-offset: 4px; }
+.mode { padding-block: 6px; border-bottom: 1px solid transparent; transition: color 0.25s, border-color 0.25s; }
+.mode:hover { color: var(--fg); }
+.mode[aria-pressed="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+
+.bottom { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
+.info { min-width: 0; display: grid; gap: 8px; }
+.info > * { transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.info.swap > * { opacity: 0; transform: translateY(6px); }
+.idx b { color: var(--accent); font-weight: 400; }
+.name {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.side { display: grid; justify-items: end; gap: 14px; }
+.hint { text-align: right; max-width: 24ch; line-height: 1.7; transition: opacity 0.6s ease; }
+.hint.gone { opacity: 0; }
+
+.ctrls { display: grid; gap: 10px; pointer-events: auto; }
+.ctrl { display: grid; grid-template-columns: 28px minmax(15ch, auto) 28px; align-items: center; justify-items: center; }
+.ctrl .val { color: var(--fg); white-space: nowrap; padding-inline: 4px; }
+.ctrl button {
+  width: 28px; height: 28px;
+  font-family: var(--display);
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--muted);
+  border-radius: 50%;
+  transition: color 0.2s, background 0.2s;
+}
+.ctrl button:hover { color: var(--fg); background: var(--faint); }
+
+.loader {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted);
+  pointer-events: none;
+  transition: opacity 0.8s ease;
+}
+.loader.done { opacity: 0; }
+
+@media (max-width: 560px) {
+  .hint { display: none; }
+  .top { grid-template-columns: auto 1fr; }
+  .modes { grid-column: 1 / -1; grid-row: 2; }
+  .meta { grid-column: 2; grid-row: 1; }
+  .bottom { flex-direction: column; align-items: stretch; }
+  .side { justify-items: start; }
+}
+</style>
+
+<canvas id="scene" tabindex="0" aria-label="Showroom 3D com arara e manequim. Use as setas para trocar de peça."></canvas>
+
+<div class="ui">
+  <div class="top">
+    <div class="brand">nihil</div>
+    <nav class="modes" aria-label="Vista">
+      <button class="mode" id="modeArara" aria-pressed="true">Arara</button>
+      <button class="mode" id="modeMesa" aria-pressed="false">Acessórios</button>
+    </nav>
+    <div class="meta" id="count"></div>
+  </div>
+  <div></div>
+  <div class="bottom">
+    <div class="info" id="info" aria-live="polite">
+      <div class="idx" id="idx">Arara</div>
+      <h1 class="name" id="name">Coleção</h1>
+      <div class="kind" id="kind"></div>
+    </div>
+    <div class="side">
+      <div class="hint" id="hint">Passe o mouse numa peça · role para trocar</div>
+      <div class="ctrls" id="ctrls" hidden>
+        <div class="ctrl">
+          <button id="accPrev" aria-label="Acessório anterior">‹</button>
+          <span class="val" id="accVal"></span>
+          <button id="accNext" aria-label="Próximo acessório">›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loader" id="loader">Pendurando as peças…</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+    "delaunator": "https://cdn.jsdelivr.net/npm/delaunator@5.0.1/+esm"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import Delaunator from 'delaunator';
+
+// Real flat measurements per garment type (metres). Chest = armpit-to-armpit width laid flat.
+const KINDS = {
+  camiseta:      { label: 'Camiseta',    chest: 0.56, hanger: 0.17,  neck: 0.085, depth: 0.017 },
+  camisa:        { label: 'Camisa',      chest: 0.58, hanger: 0.18,  neck: 0.08,  depth: 0.016 },
+  'baby-tee':    { label: 'Baby tee',    chest: 0.38, hanger: 0.12,  neck: 0.065, depth: 0.011 },
+  'manga-longa': { label: 'Manga longa', chest: 0.60, hanger: 0.18,  neck: 0.075, depth: 0.024 },
+};
+const ACC_KINDS = { bone: 'Boné', touca: 'Touca' };
+
+const $ = (id) => document.getElementById(id);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = matchMedia('(pointer: coarse)').matches;
+
+const RAIL_Y = 1.52, RAIL_X = 1.0, RAIL_R = 0.0125;
+const COLLAR_Y = -0.094;
+const SLOPE = 0.03;
+const FIXED = 1 / 60;
+const ITER = 10;
+const PITCH = 0.13;
+const WIND = reduce ? 0 : 0.09;
+const MEMORY = 0.025;
+const CAM_LOOK = new THREE.Vector3(0.0, 1.02, 0);
+const CAM_DIR = new THREE.Vector3(-1.55, 0.34, 2.3).normalize();
+const CAM_DIST = 3.25;
+const BASE_FOV = 33;
+const TABLE = { x: 2.6, z: 0.4 };
+const T_AZ = 0.45, T_EL = 0.1, T_DIST = 1.35, T_ORBIT = 0.45;
+const HEAD_R = new THREE.Vector3(0.08, 0.105, 0.093);
+
+// ── Renderer & scene ────────────────────────────────
+const canvas = $('scene');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  $('loader').textContent = 'Seu navegador não conseguiu abrir a cena 3D.';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+
+const scene = new THREE.Scene();
+const BG = new THREE.Color('#141312');
+scene.background = BG;
+scene.fog = new THREE.Fog(BG, 5, 12);
+
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+
+const camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.05, 40);
+
+// ── Light ───────────────────────────────────────────
+scene.add(new THREE.HemisphereLight(0xfff3e4, 0x1b1916, 0.32));
+
+function spot(x, y, z, tx, ty, tz, power) {
+  const s = new THREE.SpotLight(0xfff0dc, power, 0, 0.6, 0.9, 2);
+  s.position.set(x, y, z);
+  s.target.position.set(tx, ty, tz);
+  s.castShadow = true;
+  s.shadow.mapSize.set(2048, 2048);
+  s.shadow.bias = -0.0004;
+  s.shadow.normalBias = 0.02;
+  s.shadow.camera.near = 1.2;
+  s.shadow.camera.far = 9;
+  scene.add(s, s.target);
+  return s;
+}
+const key = spot(-1.2, 3.7, 2.4, 0, 1.0, 0, 42);
+const keyM = spot(TABLE.x + 0.4, 3.0, TABLE.z + 1.8, TABLE.x, 1.1, TABLE.z, 22);
+keyM.angle = 0.32;
+
+const rim = new THREE.DirectionalLight(0xffdcb8, 1.4);
+rim.position.set(2.6, 2.4, -2.4);
+scene.add(rim);
+const fill = new THREE.DirectionalLight(0xdbe3ff, 0.35);
+fill.position.set(-3, 1.4, 0.6);
+scene.add(fill);
+
+const floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: 0x1f1d1a, roughness: 0.94, metalness: 0, envMapIntensity: 0.15 })
+);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// ── Materials & small helpers ───────────────────────
+const steel = new THREE.MeshStandardMaterial({ color: 0xcfccc6, metalness: 1, roughness: 0.3, envMapIntensity: 1 });
+const darkSteel = new THREE.MeshStandardMaterial({ color: 0x3a3835, metalness: 0.9, roughness: 0.4, envMapIntensity: 0.8 });
+const rubber = new THREE.MeshStandardMaterial({ color: 0x121110, metalness: 0, roughness: 0.55 });
+const smooth = (t) => t * t * (3 - 2 * t);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Tileable jersey knit used as a bump map.
+const WEAVE = (() => {
+  const s = 128, c = document.createElement('canvas');
+  c.width = c.height = s;
+  const x = c.getContext('2d');
+  const img = x.createImageData(s, s);
+  for (let j = 0; j < s; j++) for (let i = 0; i < s; i++) {
+    const rib = 0.5 + 0.5 * Math.sin((i / s) * Math.PI * 2 * 16);
+    const row = 0.5 + 0.5 * Math.sin((j / s) * Math.PI * 2 * 24 + rib * 1.6);
+    const v = 110 + rib * 70 + row * 40 + (Math.random() - 0.5) * 50;
+    const k = (j * s + i) * 4;
+    img.data[k] = img.data[k + 1] = img.data[k + 2] = v; img.data[k + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+
+function fabricMaterial(map, W, H, side = THREE.FrontSide) {
+  const bump = WEAVE.clone();
+  bump.repeat.set(W * 34, H * 34);
+  bump.needsUpdate = true;
+  return new THREE.MeshPhysicalMaterial({
+    map, side,
+    roughness: 0.9, metalness: 0, bumpMap: bump, bumpScale: 1.2,
+    sheen: 0.45, sheenRoughness: 0.75, sheenColor: new THREE.Color(0xffffff),
+    envMapIntensity: 0.35,
+  });
+}
+
+// ── Rack ────────────────────────────────────────────
+function buildRack() {
+  const g = new THREE.Group();
+  const v = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+  const r = 0.07, B = 0.082, H = RAIL_Y, X = RAIL_X;
+  const path = new THREE.CurvePath();
+  path.add(new THREE.LineCurve3(v(-X, B), v(-X, H - r)));
+  path.add(new THREE.QuadraticBezierCurve3(v(-X, H - r), v(-X, H), v(-X + r, H)));
+  path.add(new THREE.LineCurve3(v(-X + r, H), v(X - r, H)));
+  path.add(new THREE.QuadraticBezierCurve3(v(X - r, H), v(X, H), v(X, H - r)));
+  path.add(new THREE.LineCurve3(v(X, H - r), v(X, B)));
+  const frame = new THREE.Mesh(new THREE.TubeGeometry(path, 800, RAIL_R, 20, false), steel);
+  frame.castShadow = frame.receiveShadow = true;
+  g.add(frame);
+  for (const sx of [-X, X]) {
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.66, 20), steel);
+    foot.rotation.x = Math.PI / 2;
+    foot.position.set(sx, B, 0);
+    foot.castShadow = foot.receiveShadow = true;
+    g.add(foot);
+    const joint = new THREE.Mesh(new THREE.SphereGeometry(0.019, 20, 14), steel);
+    joint.position.set(sx, B, 0);
+    g.add(joint);
+    for (const sz of [-0.3, 0.3]) {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.015, 16, 10), steel);
+      cap.position.set(sx, B, sz * 1.1);
+      g.add(cap);
+      const fork = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.032, 0.026), steel);
+      fork.position.set(sx, B - 0.026, sz);
+      fork.castShadow = true;
+      g.add(fork);
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.028, 0.02, 24), rubber);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(sx, 0.028, sz);
+      wheel.castShadow = true;
+      g.add(wheel);
+    }
+  }
+  scene.add(g);
+}
+buildRack();
+
+const hookGeo = (() => {
+  const R = RAIL_R + 0.0034;
+  const pts = [new THREE.Vector3(0, -0.072, 0), new THREE.Vector3(0, -0.05, 0.0015), new THREE.Vector3(0, -0.03, 0.009)];
+  for (let a = -40; a <= 215; a += 15) {
+    const t = (a * Math.PI) / 180;
+    pts.push(new THREE.Vector3(0, R * Math.sin(t), R * Math.cos(t)));
+  }
+  pts.push(new THREE.Vector3(0, -0.019, -0.0125));
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 90, 0.0027, 10, false);
+})();
+const hookTip = new THREE.SphereGeometry(0.0027, 10, 8);
+
+// ── Shape: the photo's outline traced, smoothed, and filled with an even triangle mesh ──
+// The mesh ends exactly on the outline, so the silhouette is real geometry, not a transparency cut.
+const PX = 0.0025;     // raster resolution, metres per pixel
+const BSTEP = 0.008;   // point spacing along the outline
+const ISTEP = 0.02;    // point spacing inside the garment
+
+function chamfer(sh, src) {
+  const { cw, ch } = sh;
+  const g = new Float32Array(cw * ch);
+  for (let k = 0; k < g.length; k++) g[k] = src(k) ? 0 : 1e6;
+  const r = (k, u, w) => { if (g[u] + w < g[k]) g[k] = g[u] + w; };
+  for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+    const k = y * cw + x;
+    if (x > 0) r(k, k - 1, 1);
+    if (y > 0) { r(k, k - cw, 1); if (x > 0) r(k, k - cw - 1, 1.414); if (x < cw - 1) r(k, k - cw + 1, 1.414); }
+  }
+  for (let y = ch - 1; y >= 0; y--) for (let x = cw - 1; x >= 0; x--) {
+    const k = y * cw + x;
+    if (x < cw - 1) r(k, k + 1, 1);
+    if (y < ch - 1) { r(k, k + cw, 1); if (x < cw - 1) r(k, k + cw + 1, 1.414); if (x > 0) r(k, k + cw - 1, 1.414); }
+  }
+  return g;
+}
+
+// Moore-neighbour trace of the outer boundary of a binary raster.
+function traceOutline(fab, w, h) {
+  let sx = -1, sy = -1;
+  outer: for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (fab[y * w + x]) { sx = x; sy = y; break outer; }
+  if (sx < 0) return [];
+  const D = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+  const at = (x, y) => x >= 0 && y >= 0 && x < w && y < h && fab[y * w + x] === 1;
+  const out = [[sx, sy]];
+  let cx = sx, cy = sy, start = 6;
+  for (let guard = 0; guard < w * h; guard++) {
+    let moved = false;
+    for (let k = 0; k < 8; k++) {
+      const d = (start + k) % 8;
+      const nx = cx + D[d][0], ny = cy + D[d][1];
+      if (at(nx, ny)) { cx = nx; cy = ny; start = (d + 6) % 8; moved = true; break; }
+    }
+    if (!moved || (cx === sx && cy === sy)) break;
+    out.push([cx, cy]);
+  }
+  return out;
+}
+
+function buildShape(img, W) {
+  const H = (W * img.naturalHeight) / img.naturalWidth;
+  const cw = Math.round(W / PX), ch = Math.round(H / PX);
+  const cv = document.createElement('canvas');
+  cv.width = cw; cv.height = ch;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0, cw, ch);
+  const ad = cx.getImageData(0, 0, cw, ch).data;
+  const fab = new Uint8Array(cw * ch);
+  for (let k = 0; k < cw * ch; k++) fab[k] = ad[k * 4 + 3] >= 128 ? 1 : 0;
+  const sh = { W, H, cw, ch, ad, fab };
+  const toX = (px) => (px / cw - 0.5) * W, toY = (py) => -(py / ch) * H;
+  const pxOf = (x) => clamp(Math.round((x / W + 0.5) * cw), 0, cw - 1);
+  const pyOf = (y) => clamp(Math.round((-y / H) * ch), 0, ch - 1);
+  sh.at = (x, y) => fab[pyOf(y) * cw + pxOf(x)] === 1;
+  sh.k = (x, y) => pyOf(y) * cw + pxOf(x);
+
+  // Outline: trace, smooth over ~2 cm, resample evenly.
+  const raw = traceOutline(fab, cw, ch);
+  const n = raw.length, R = 4;
+  const sm = [];
+  for (let i = 0; i < n; i++) {
+    let ax = 0, ay = 0, aw = 0;
+    for (let d = -R; d <= R; d++) {
+      const p = raw[(i + d + n) % n], w = R + 1 - Math.abs(d);
+      ax += p[0] * w; ay += p[1] * w; aw += w;
+    }
+    sm.push([toX(ax / aw + 0.5), toY(ay / aw + 0.5)]);
+  }
+  const pts = [sm[0].slice()];
+  let carry = 0;
+  for (let i = 0; i < n; i++) {
+    const a = sm[i], b = sm[(i + 1) % n];
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let s = BSTEP - carry;
+    while (s <= L) { const t = s / L; pts.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); s += BSTEP; }
+    carry = L - (s - BSTEP);
+  }
+  const f0 = pts[0], fl = pts[pts.length - 1];
+  if (Math.hypot(f0[0] - fl[0], f0[1] - fl[1]) < BSTEP * 0.5) pts.pop();
+  sh.nb = pts.length;
+
+  // Interior: staggered grid, kept clear of the outline.
+  const dIn = chamfer(sh, (k) => fab[k] === 0);
+  const minD = (0.6 * ISTEP) / PX, rowH = ISTEP * 0.866;
+  for (let r = 0, y = -rowH * 0.5; y > -H; y -= rowH, r++) {
+    for (let x = -W / 2 + (r % 2 ? ISTEP / 2 : 0); x < W / 2; x += ISTEP) {
+      const k = sh.k(x, y);
+      if (fab[k] && dIn[k] >= minD) pts.push([x, y]);
+    }
+  }
+  const N = (sh.N = pts.length);
+  const coords = new Float64Array(N * 2);
+  pts.forEach((p, i) => { coords[i * 2] = p[0]; coords[i * 2 + 1] = p[1]; });
+  const T = new Delaunator(coords).triangles;
+  const tris = [];
+  const maxE = ISTEP * 2.6;
+  for (let t = 0; t < T.length; t += 3) {
+    let a = T[t], b = T[t + 1], c = T[t + 2];
+    const [ax, ay] = pts[a], [bx, by] = pts[b], [qx, qy] = pts[c];
+    if (Math.max(Math.hypot(ax - bx, ay - by), Math.hypot(bx - qx, by - qy), Math.hypot(qx - ax, qy - ay)) > maxE) continue;
+    if (!sh.at((ax + bx + qx) / 3, (ay + by + qy) / 3)) continue;
+    const area = (bx - ax) * (qy - ay) - (qx - ax) * (by - ay);
+    if (Math.abs(area) < 1e-9) continue;
+    if (area < 0) { const s = b; b = c; c = s; }
+    tris.push(a, b, c);
+  }
+  sh.tris = Uint16Array.from(tris);
+  sh.trisBack = new Uint16Array(tris.length);
+  for (let t = 0; t < tris.length; t += 3) { sh.trisBack[t] = tris[t]; sh.trisBack[t + 1] = tris[t + 2]; sh.trisBack[t + 2] = tris[t + 1]; }
+
+  sh.rest = new Float32Array(N * 3);
+  sh.uv = new Float32Array(N * 2);
+  pts.forEach(([x, y], i) => {
+    sh.rest[i * 3] = x; sh.rest[i * 3 + 1] = y;
+    sh.uv[i * 2] = x / W + 0.5; sh.uv[i * 2 + 1] = 1 + y / H;
+  });
+  sh.used = new Uint8Array(N);
+  for (const v of tris) sh.used[v] = 1;
+
+  const topRow = new Int32Array(cw).fill(-1);
+  for (let x = 0; x < cw; x++) for (let y = 0; y < ch; y++) if (fab[y * cw + x]) { topRow[x] = y; break; }
+  sh.topRow = topRow;
+  sh.topYAt = (x) => { const tr = topRow[pxOf(x)]; return tr < 0 ? NaN : -(tr / ch) * H; };
+  let collar = -Infinity;
+  for (let x = -0.035; x <= 0.035; x += PX) { const t = sh.topYAt(x); if (!isNaN(t)) collar = Math.max(collar, t); }
+  sh.collar = isFinite(collar) ? collar : 0;
+  return sh;
+}
+
+// Stretch along every mesh edge, plus a bending pair across each interior edge.
+function shapeConstraints(sh, squeeze) {
+  const { tris, rest } = sh;
+  const edges = new Map();
+  for (let t = 0; t < tris.length; t += 3) {
+    for (let e = 0; e < 3; e++) {
+      const a = tris[t + e], b = tris[t + ((e + 1) % 3)], c = tris[t + ((e + 2) % 3)];
+      const key = a < b ? a * 65536 + b : b * 65536 + a;
+      const rec = edges.get(key);
+      if (rec) rec[3] = c; else edges.set(key, [Math.min(a, b), Math.max(a, b), c, -1]);
+    }
+  }
+  const ca = [], cb = [], cr = [], ck = [];
+  const add = (a, b, k) => {
+    const f = squeeze(a, b);
+    ca.push(a); cb.push(b);
+    cr.push(Math.hypot((rest[a * 3] - rest[b * 3]) * f, rest[a * 3 + 1] - rest[b * 3 + 1]));
+    ck.push(k);
+  };
+  for (const [a, b, c, d] of edges.values()) {
+    add(a, b, 1);
+    if (d >= 0) add(c, d, 0.9);
+  }
+  return { ca: Uint16Array.from(ca), cb: Uint16Array.from(cb), cr: Float32Array.from(cr), ck: Float32Array.from(ck) };
+}
+
+function solve(pos, inv, A, B, R, K) {
+  for (let c = 0, n = A.length; c < n; c++) {
+    const ia = A[c], ib = B[c];
+    const wa = inv[ia], wb = inv[ib], ws = wa + wb;
+    if (ws === 0) continue;
+    const a = ia * 3, b = ib * 3;
+    const dx = pos[b] - pos[a], dy = pos[b + 1] - pos[a + 1], dz = pos[b + 2] - pos[a + 2];
+    const L = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (L < 1e-9) continue;
+    const s = (K[c] * (L - R[c])) / (L * ws);
+    pos[a] += dx * s * wa; pos[a + 1] += dy * s * wa; pos[a + 2] += dz * s * wa;
+    pos[b] -= dx * s * wb; pos[b + 1] -= dy * s * wb; pos[b + 2] -= dz * s * wb;
+  }
+}
+
+function clothMesh(sh, index, mat, owner) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sh.N * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('uv', new THREE.BufferAttribute(sh.uv, 2));
+  g.setIndex(new THREE.BufferAttribute(index, 1));
+  const m = new THREE.Mesh(g, mat);
+  m.castShadow = m.receiveShadow = true;
+  m.frustumCulled = false;
+  m.matrixAutoUpdate = false;
+  m.userData.g = owner;
+  scene.add(m);
+  return m;
+}
+
+// ── Garment on the rack ─────────────────────────────
+class RackGarment {
+  constructor(piece, img, index, tex, backTex) {
+    this.piece = piece;
+    this.index = index;
+    const kind = (this.kind = KINDS[piece.kind]);
+    const W = (piece.chest ?? kind.chest) / piece.chestFrac;
+    const sh = buildShape(img, W);
+    const { N, rest, H, cw, ch, fab } = sh;
+    this.sh = sh; this.N = N;
+    this.alpha = { data: sh.ad, w: cw, h: ch };
+    const hw = (this.hw = kind.hanger);
+
+    const shift = COLLAR_Y - sh.collar;
+    for (let v = 0; v < N; v++) rest[v * 3 + 1] += shift;
+    const topY = (x) => sh.topYAt(x) + shift;
+
+    // Hanger: holds the outline points along the shoulders it spans, sloping down to its tips.
+    const pins = [];
+    for (let v = 0; v < sh.nb; v++) {
+      const x = rest[v * 3], y = rest[v * 3 + 1];
+      if (Math.abs(x) <= hw && y >= topY(x) - 0.007) pins.push(v);
+    }
+    this.pins = Uint16Array.from(pins);
+    this.pinLocal = new Float32Array(pins.length * 3);
+    pins.forEach((p, k) => {
+      const x = rest[p * 3];
+      this.pinLocal[k * 3] = x;
+      this.pinLocal[k * 3 + 1] = rest[p * 3 + 1] - SLOPE * (x / hw) ** 2;
+    });
+
+    // Volume: distance to the outline (ignoring the shoulder line the hanger holds) sets the thickness.
+    const spanPx = (x) => Math.abs((x / cw - 0.5) * W) <= hw + 0.03;
+    const dIn = chamfer(sh, (k) => {
+      if (fab[k]) return false;
+      const x = k % cw, y = (k / cw) | 0;
+      return !(spanPx(x) && sh.topRow[x] >= 0 && y < sh.topRow[x]);
+    });
+    const thick = (this.thick = new Float32Array(N));
+    for (let v = 0; v < N; v++) {
+      const x = rest[v * 3], y = rest[v * 3 + 1];
+      const sd = v < sh.nb ? 0 : Math.min(dIn[sh.k(x, y - shift)], 1e4) * PX;
+      let t = kind.depth * (1 - Math.exp(-sd / 0.05));
+      if (Math.abs(x) <= hw + 0.03) {
+        const s = smooth(clamp((topY(x) - y) / 0.09, 0, 1));
+        t = 0.0025 + (t - 0.0025) * s;
+        if (v < sh.nb && y < topY(x) - 0.012) t = 0;
+      }
+      thick[v] = t;
+    }
+
+    const squeeze = (a, b) => 1 - 0.015 * smooth(clamp((COLLAR_Y - (rest[a * 3 + 1] + rest[b * 3 + 1]) / 2) / H, 0, 1));
+    const c = shapeConstraints(sh, squeeze);
+    this.ca = c.ca; this.cb = c.cb; this.cr = c.cr; this.ck = c.ck;
+
+    const inv = (this.inv = new Float32Array(N));
+    for (let v = 0; v < N; v++) inv[v] = sh.used[v] ? 1 : 0;
+    for (const p of pins) inv[p] = 0;
+
+    const len = (a, b) => Math.hypot(rest[a * 3] - rest[b * 3], rest[a * 3 + 1] - rest[b * 3 + 1]);
+    const tv = [], tp = [], tl = [];
+    for (let v = 0; v < N; v++) {
+      if (!inv[v]) continue;
+      let best = -1, bd = 1e9;
+      for (const p of pins) { const dd = len(v, p); if (dd < bd) { bd = dd; best = p; } }
+      if (best >= 0) { tv.push(v); tp.push(best); tl.push(bd * 1.03); }
+    }
+    this.tv = Uint16Array.from(tv); this.tp = Uint16Array.from(tp); this.tl = Float32Array.from(tl);
+    this.rest = rest;
+
+    this.rig = new THREE.Group();
+    this.swing = new THREE.Group();
+    this.yawG = new THREE.Group();
+    this.rig.add(this.swing);
+    this.swing.add(this.yawG);
+    this.rig.position.set(0, RAIL_Y, 0);
+    scene.add(this.rig);
+    const hook = new THREE.Mesh(hookGeo, steel);
+    hook.castShadow = true;
+    this.swing.add(hook);
+    const tip = new THREE.Mesh(hookTip, steel);
+    tip.position.set(0, -0.019, -0.0125);
+    this.swing.add(tip);
+    const neckLen = -0.072 - (COLLAR_Y - 0.006);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.0027, 0.0027, neckLen, 10), steel);
+    neck.position.y = -0.072 - neckLen / 2;
+    neck.castShadow = true;
+    this.yawG.add(neck);
+
+    this.x = 0; this.vx = 0; this.tx = 0;
+    this.th = 0; this.thv = 0;
+    this.yawRest = -Math.PI / 2 + (index % 2 ? 0.05 : -0.04);
+    this.yaw = this.yawRest; this.yawv = 0; this.tyaw = this.yawRest;
+    this.releaseAt = 0;
+    this.slab = 0.035;
+    this.reach = hw + 0.12;
+
+    this.pos = new Float32Array(N * 3);
+    this.prev = new Float32Array(N * 3);
+    this.nrm = new Float32Array(N * 3);
+    this.front = clothMesh(sh, sh.tris, fabricMaterial(tex, W, H), this);
+    this.back = clothMesh(sh, sh.trisBack, fabricMaterial(backTex, W, H), this);
+  }
+
+  place(x) {
+    this.x = this.tx = x;
+    this.applyRig();
+    const { N, rest, pos } = this;
+    const e = this.yawG.matrixWorld.elements;
+    for (let v = 0; v < N; v++) {
+      const o = v * 3;
+      const lx = rest[o], ly = rest[o + 1];
+      const depth = clamp((COLLAR_Y - ly) / 0.5, 0, 1);
+      const lz = (Math.sin(lx * 52 + this.index * 2.1) * 0.002 + Math.sin(lx * 23 - this.index) * 0.0015) * depth;
+      pos[o] = e[0] * lx + e[4] * ly + e[8] * lz + e[12];
+      pos[o + 1] = e[1] * lx + e[5] * ly + e[9] * lz + e[13];
+      pos[o + 2] = e[2] * lx + e[6] * ly + e[10] * lz + e[14];
+    }
+    this.prev.set(pos);
+  }
+
+  applyRig() {
+    this.rig.position.x = this.x;
+    this.swing.rotation.z = this.th;
+    this.yawG.rotation.y = this.yaw;
+    this.rig.updateMatrixWorld(true);
+  }
+
+  dynamics(dt, now) {
+    const tx = now < this.releaseAt ? this.x : this.tx;
+    const ax = 16 * (tx - this.x) - 7.6 * this.vx;
+    this.vx += ax * dt;
+    this.x += this.vx * dt;
+    const L = 0.36;
+    const drive = clamp(ax, -2.5, 2.5) * 0.55;
+    this.thv += (-(9.81 / L) * Math.sin(this.th) - 2.4 * this.thv - (drive * Math.cos(this.th)) / L) * dt;
+    this.th += this.thv * dt;
+    const ay = 32 * (this.tyaw - this.yaw) - 7.2 * this.yawv;
+    this.yawv += ay * dt;
+    this.yaw += this.yawv * dt;
+    this.applyRig();
+  }
+
+  simulate(dt, t, damp = 0.992) {
+    const { pos, prev, inv, N } = this;
+    const dt2 = dt * dt;
+    const ph = this.index * 1.7;
+    const wx = WIND * (Math.sin(t * 0.7 + ph) * 0.6 + Math.sin(t * 1.9 + ph * 0.6) * 0.4);
+    const wz = WIND * 0.5 * Math.sin(t * 1.13 + ph * 1.3);
+    for (let v = 0; v < N; v++) {
+      if (inv[v] === 0) continue;
+      const o = v * 3;
+      const x = pos[o], y = pos[o + 1], z = pos[o + 2];
+      const rip = 1 + 0.25 * Math.sin(y * 9 - t * 2.3 + z * 5);
+      pos[o] += (x - prev[o]) * damp + wx * rip * dt2;
+      pos[o + 1] += (y - prev[o + 1]) * damp - 9.81 * dt2;
+      pos[o + 2] += (z - prev[o + 2]) * damp + wz * rip * dt2;
+      prev[o] = x; prev[o + 1] = y; prev[o + 2] = z;
+    }
+    const e = this.yawG.matrixWorld.elements;
+    const pl = this.pinLocal, pins = this.pins;
+    for (let k = 0; k < pins.length; k++) {
+      const o = pins[k] * 3, lx = pl[k * 3], ly = pl[k * 3 + 1];
+      pos[o] = e[0] * lx + e[4] * ly + e[12];
+      pos[o + 1] = e[1] * lx + e[5] * ly + e[13];
+      pos[o + 2] = e[2] * lx + e[6] * ly + e[14];
+    }
+    for (let it = 0; it < ITER; it++) solve(pos, inv, this.ca, this.cb, this.cr, this.ck);
+    // Shape memory: a gentle pull back toward the photo's own proportions, carried by the hanger.
+    const rest = this.rest;
+    for (let v = 0; v < N; v++) {
+      if (inv[v] === 0) continue;
+      const o = v * 3, lx = rest[o], ly = rest[o + 1];
+      pos[o] += (e[0] * lx + e[4] * ly + e[12] - pos[o]) * MEMORY;
+      pos[o + 1] += (e[1] * lx + e[5] * ly + e[13] - pos[o + 1]) * MEMORY;
+      pos[o + 2] += (e[2] * lx + e[6] * ly + e[14] - pos[o + 2]) * MEMORY;
+    }
+    const TV = this.tv, TP = this.tp, TL = this.tl;
+    for (let k = 0; k < TV.length; k++) {
+      const v = TV[k] * 3, q = TP[k] * 3;
+      const dx = pos[v] - pos[q], dy = pos[v + 1] - pos[q + 1], dz = pos[v + 2] - pos[q + 2];
+      const L = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      if (L > TL[k]) {
+        const s = TL[k] / L;
+        pos[v] = pos[q] + dx * s; pos[v + 1] = pos[q + 1] + dy * s; pos[v + 2] = pos[q + 2] + dz * s;
+      }
+    }
+    const nxw = Math.sin(this.yaw), nzw = Math.cos(this.yaw);
+    const px = this.rig.position.x, tilt = Math.sin(this.th), lim = this.slab;
+    for (let v = 0; v < N; v++) {
+      if (inv[v] === 0) continue;
+      const o = v * 3;
+      const cxp = px + (RAIL_Y - pos[o + 1]) * tilt;
+      const dd = (pos[o] - cxp) * nxw + pos[o + 2] * nzw;
+      const over = dd > lim ? dd - lim : dd < -lim ? dd + lim : 0;
+      if (over !== 0) { pos[o] -= nxw * over * 0.7; pos[o + 2] -= nzw * over * 0.7; }
+    }
+  }
+
+  brush(o, dir, push, r) {
+    const { pos, inv, N } = this;
+    const r2 = r * r;
+    for (let v = 0; v < N; v++) {
+      if (inv[v] === 0) continue;
+      const k = v * 3;
+      const wx = pos[k] - o.x, wy = pos[k + 1] - o.y, wz = pos[k + 2] - o.z;
+      const tp = wx * dir.x + wy * dir.y + wz * dir.z;
+      const qx = wx - dir.x * tp, qy = wy - dir.y * tp, qz = wz - dir.z * tp;
+      const d2 = qx * qx + qy * qy + qz * qz;
+      if (d2 >= r2) continue;
+      const f = (1 - Math.sqrt(d2) / r) ** 2;
+      pos[k] += push.x * f; pos[k + 1] += push.y * f; pos[k + 2] += push.z * f;
+    }
+  }
+
+  updateMesh() {
+    const { N, pos, thick, nrm } = this;
+    const T = this.sh.tris;
+    nrm.fill(0);
+    for (let t = 0; t < T.length; t += 3) {
+      const a = T[t] * 3, b = T[t + 1] * 3, c = T[t + 2] * 3;
+      const ux = pos[b] - pos[a], uy = pos[b + 1] - pos[a + 1], uz = pos[b + 2] - pos[a + 2];
+      const vx = pos[c] - pos[a], vy = pos[c + 1] - pos[a + 1], vz = pos[c + 2] - pos[a + 2];
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      nrm[a] += nx; nrm[a + 1] += ny; nrm[a + 2] += nz;
+      nrm[b] += nx; nrm[b + 1] += ny; nrm[b + 2] += nz;
+      nrm[c] += nx; nrm[c + 1] += ny; nrm[c + 2] += nz;
+    }
+    const F = this.front.geometry.attributes.position.array;
+    const Bk = this.back.geometry.attributes.position.array;
+    for (let v = 0; v < N; v++) {
+      const o = v * 3;
+      const l = Math.hypot(nrm[o], nrm[o + 1], nrm[o + 2]) || 1;
+      const s = thick[v] / l;
+      const ox = nrm[o] * s, oy = nrm[o + 1] * s, oz = nrm[o + 2] * s;
+      F[o] = pos[o] + ox; F[o + 1] = pos[o + 1] + oy; F[o + 2] = pos[o + 2] + oz;
+      Bk[o] = pos[o] - ox; Bk[o + 1] = pos[o + 1] - oy; Bk[o + 2] = pos[o + 2] - oz;
+    }
+    for (const m of [this.front, this.back]) {
+      m.geometry.attributes.position.needsUpdate = true;
+      m.geometry.computeVertexNormals();
+      m.geometry.computeBoundingSphere();
+    }
+  }
+
+  alphaAt(uv) {
+    const a = this.alpha;
+    const x = clamp((uv.x * a.w) | 0, 0, a.w - 1);
+    const y = clamp(((1 - uv.y) * a.h) | 0, 0, a.h - 1);
+    return a.data[(y * a.w + x) * 4 + 3] / 255;
+  }
+}
+
+// ── Display table with a single mannequin head for accessories ──
+const TABLE_TOP = 0.9;
+
+class DisplayTable {
+  constructor(x, z) {
+    this.group = new THREE.Group();
+    this.group.position.set(x, 0, z);
+    scene.add(this.group);
+    const oak = new THREE.MeshStandardMaterial({ color: 0x4a3626, roughness: 0.6, metalness: 0, envMapIntensity: 0.45 });
+    const form = new THREE.MeshStandardMaterial({ color: 0x8a8379, roughness: 0.62, metalness: 0, envMapIntensity: 0.5 });
+
+    const top = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.04, 0.55), oak);
+    top.position.y = TABLE_TOP - 0.02;
+    top.castShadow = top.receiveShadow = true;
+    this.group.add(top);
+    const legH = TABLE_TOP - 0.04;
+    for (const sx of [-0.51, 0.51]) for (const sz of [-0.235, 0.235]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.024, legH, 0.024), darkSteel);
+      leg.position.set(sx, legH / 2, sz);
+      leg.castShadow = true;
+      this.group.add(leg);
+    }
+    for (const sz of [-0.235, 0.235]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.018, 0.018), darkSteel);
+      rail.position.set(0, 0.14, sz);
+      this.group.add(rail);
+    }
+
+    // Hat display head on a short stand.
+    const y0 = TABLE_TOP;
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.08, 0.016, 40), darkSteel);
+    base.position.y = y0 + 0.008;
+    base.castShadow = base.receiveShadow = true;
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.16, 16), steel);
+    pole.position.y = y0 + 0.016 + 0.08;
+    pole.castShadow = true;
+    const neckBase = y0 + 0.176;
+    const prof = [[0.001, 0], [0.056, 0], [0.059, 0.012], [0.053, 0.045], [0.048, 0.095], [0.05, 0.13]]
+      .map(([r, y]) => new THREE.Vector2(r, y));
+    const neck = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), form);
+    neck.position.y = neckBase;
+    neck.castShadow = neck.receiveShadow = true;
+    this.headC = new THREE.Vector3(0, neckBase + 0.12 + 0.07, 0);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(1, 56, 40), form);
+    head.scale.copy(HEAD_R);
+    head.position.copy(this.headC);
+    head.castShadow = head.receiveShadow = true;
+    this.group.add(base, pole, neck, head);
+    this.headG = new THREE.Group();
+    this.headG.position.copy(this.headC);
+    this.group.add(this.headG);
+    this.headWorld = this.headC.clone().add(this.group.position);
+  }
+}
+
+// ── Accessories made from a single photo ────────────
+function alphaRows(img, w = 256) {
+  const h = Math.round((w * img.naturalHeight) / img.naturalWidth);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true });
+  x.drawImage(img, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data;
+  const L = new Float32Array(h).fill(-1), R = new Float32Array(h).fill(-1);
+  let top = -1, bot = -1;
+  for (let y = 0; y < h; y++) {
+    for (let i = 0; i < w; i++) if (d[(y * w + i) * 4 + 3] > 128) { if (L[y] < 0) L[y] = i; R[y] = i; }
+    if (L[y] >= 0) { if (top < 0) top = y; bot = y; }
+  }
+  return { w, h, L, R, top, bot };
+}
+
+// Beanie: a knit dome over the head, the photo wrapped around it row by row.
+function makeBeanie(img, tex) {
+  const rows = alphaRows(img);
+  const segT = 80, segP = 40, PMAX = 1.88;
+  const P = [], UV = [], I = [];
+  for (let p = 0; p <= segP; p++) {
+    const ph = (p / segP) * PMAX;
+    const cuff = smooth(clamp((ph - (PMAX - 0.34)) / 0.34, 0, 1));
+    const slouch = 0.012 * Math.max(0, Math.cos(ph)) ** 2;
+    const k = 1 + 0.035 * cuff;
+    let row = Math.round(rows.top + (p / segP) * (rows.bot - rows.top));
+    row = clamp(row, rows.top, rows.bot);
+    const L = rows.L[row] >= 0 ? rows.L[row] : rows.w * 0.3, R = rows.R[row] >= 0 ? rows.R[row] : rows.w * 0.7;
+    for (let t = 0; t <= segT; t++) {
+      const th = (t / segT) * Math.PI * 2 - Math.PI;
+      // Knit stretches round over the head: wider than the egg-shaped head, barely taller.
+      P.push(HEAD_R.x * 1.16 * k * Math.sin(ph) * Math.sin(th), HEAD_R.y * 0.96 * Math.cos(ph) + 0.006 + slouch, HEAD_R.z * 1.1 * k * Math.sin(ph) * Math.cos(th));
+      let f = th;
+      if (Math.abs(f) > Math.PI / 2) f = Math.sign(f) * (Math.PI - Math.abs(f));
+      const u01 = 0.5 + f / Math.PI;
+      UV.push((L + u01 * (R - L) + 0.5) / rows.w, 1 - (row + 0.5) / rows.h);
+    }
+  }
+  for (let p = 0; p < segP; p++) for (let t = 0; t < segT; t++) {
+    const a = p * (segT + 1) + t, b = a + 1, c = a + segT + 1, d = c + 1;
+    I.push(a, c, d, a, d, b);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+  g.setIndex(I);
+  g.computeVertexNormals();
+  const bump = WEAVE.clone();
+  bump.repeat.set(6, 10);
+  bump.needsUpdate = true;
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95, metalness: 0, bumpMap: bump, bumpScale: 2, envMapIntensity: 0.3 }));
+  m.castShadow = m.receiveShadow = true;
+  m.rotation.x = -0.12;
+  return m;
+}
+
+// Cadet cap: modelled crown and brim, the photo projected from the angle it was shot at.
+function makeCap(img, tex, backTex) {
+  const base = -0.004, HC = 0.112, rc = 0.016, ex = 0.094, ez = 0.106;
+  const segT = 72;
+  const prof = [];
+  for (let k = 0; k <= 8; k++) prof.push([0, (k / 8) * (HC - rc)]);
+  for (let k = 1; k <= 6; k++) { const a = (k / 6) * (Math.PI / 2); prof.push([rc * (1 - Math.cos(a)), HC - rc + rc * Math.sin(a)]); }
+  for (let k = 1; k <= 6; k++) prof.push([rc + (k / 6) * (Math.min(ex, ez) - rc - 0.004), HC]);
+  const P = [], I = [];
+  for (let s = 0; s < prof.length; s++) {
+    const [inset, y] = prof[s];
+    for (let t = 0; t <= segT; t++) {
+      const th = (t / segT) * Math.PI * 2 - Math.PI;
+      const sx = Math.max(0.004, ex - inset), sz = Math.max(0.004, ez - inset);
+      const zz = sz * Math.cos(th);
+      const tilt = y > HC - rc - 0.001 ? -0.012 * (zz / ez) : 0;
+      P.push(sx * Math.sin(th), base + y + tilt, zz);
+    }
+  }
+  for (let s = 0; s < prof.length - 1; s++) for (let t = 0; t < segT; t++) {
+    const a = s * (segT + 1) + t, b = a + 1, c = a + segT + 1, d = c + 1;
+    I.push(a, b, d, a, d, c);
+  }
+  const crownCount = P.length / 3;
+  const segB = 40, rowsB = 6, TH = 1.05;
+  for (let r = 0; r <= rowsB; r++) {
+    for (let t = 0; t <= segB; t++) {
+      const th = -TH + (t / segB) * 2 * TH;
+      const L = 0.058 * Math.pow(Math.max(0, Math.cos(th * 1.45)), 0.75);
+      const d = (r / rowsB) * L;
+      const nxv = Math.sin(th) / ex, nzv = Math.cos(th) / ez, nl = Math.hypot(nxv, nzv);
+      const x = ex * Math.sin(th) + (nxv / nl) * d, z = ez * Math.cos(th) + (nzv / nl) * d;
+      P.push(x, base - 0.002 - d * Math.tan(0.42) - 0.012 * Math.sin(th) ** 2 * (r / rowsB), z);
+    }
+  }
+  for (let r = 0; r < rowsB; r++) for (let t = 0; t < segB; t++) {
+    const a = crownCount + r * (segB + 1) + t, b = a + 1, c = a + segB + 1, d = c + 1;
+    I.push(a, c, d, a, d, b);
+  }
+
+  // Projector placed where the camera was: cap's front turned toward the photo's left, seen slightly from above.
+  const proj = new THREE.PerspectiveCamera(22, 1, 0.1, 5);
+  const az = 0.95, el = 0.22, dist = 0.75;
+  proj.position.set(Math.sin(az) * Math.cos(el) * dist, base + 0.05 + Math.sin(el) * dist, Math.cos(az) * Math.cos(el) * dist);
+  proj.lookAt(0, base + 0.04, 0.03);
+  proj.updateMatrixWorld(true);
+  proj.updateProjectionMatrix();
+  const v3 = new THREE.Vector3();
+  const nd = [];
+  let minx = 1e9, maxx = -1e9, miny = 1e9, maxy = -1e9;
+  for (let k = 0; k < P.length; k += 3) {
+    v3.set(P[k], P[k + 1], P[k + 2]).project(proj);
+    nd.push(v3.x, v3.y);
+    minx = Math.min(minx, v3.x); maxx = Math.max(maxx, v3.x); miny = Math.min(miny, v3.y); maxy = Math.max(maxy, v3.y);
+  }
+  const rows = alphaRows(img);
+  let fl = 1e9, fr = -1e9;
+  for (let y = rows.top; y <= rows.bot; y++) if (rows.L[y] >= 0) { fl = Math.min(fl, rows.L[y]); fr = Math.max(fr, rows.R[y]); }
+  const u0 = fl / rows.w, u1 = (fr + 1) / rows.w, vTop = 1 - rows.top / rows.h, vBot = 1 - (rows.bot + 1) / rows.h;
+  const UV = [];
+  for (let k = 0; k < nd.length; k += 2) {
+    UV.push(u0 + ((nd[k] - minx) / (maxx - minx)) * (u1 - u0), vBot + ((nd[k + 1] - miny) / (maxy - miny)) * (vTop - vBot));
+  }
+
+  // Faces the projector saw get the photo; the hidden back gets the cap's plain colour.
+  const toProj = new THREE.Vector3(), ctr = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), nrm = new THREE.Vector3();
+  const IF = [], IB = [];
+  const pv = (i, out) => out.set(P[i * 3], P[i * 3 + 1], P[i * 3 + 2]);
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+  for (let k = 0; k < I.length; k += 3) {
+    pv(I[k], A); pv(I[k + 1], B); pv(I[k + 2], C);
+    e1.subVectors(B, A); e2.subVectors(C, A); nrm.crossVectors(e1, e2).normalize();
+    ctr.addVectors(A, B).add(C).multiplyScalar(1 / 3);
+    toProj.subVectors(proj.position, ctr).normalize();
+    (Math.abs(nrm.dot(toProj)) > 0.12 && (I[k] >= crownCount || nrm.dot(toProj) > 0) ? IF : IB).push(I[k], I[k + 1], I[k + 2]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+  g.setIndex(I);
+  g.computeVertexNormals();
+  const mk = (idx, map) => {
+    const geo = g.clone();
+    geo.setIndex(idx);
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map, roughness: 0.85, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.3 }));
+    m.castShadow = m.receiveShadow = true;
+    return m;
+  };
+  const grp = new THREE.Group();
+  grp.add(mk(IF, tex), mk(IB, backTex));
+  grp.rotation.x = 0.06;
+  return grp;
+}
+
+// ── Textures ────────────────────────────────────────
+const loadImg = (src) => new Promise((res, rej) => {
+  const im = new Image();
+  im.onload = () => res(im);
+  im.onerror = () => rej(new Error(src));
+  im.src = src;
+});
+
+function frontTexture(img) {
+  const t = new THREE.Texture(img);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  t.needsUpdate = true;
+  return t;
+}
+
+function backTexture(img) {
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const probe = document.createElement('canvas');
+  probe.width = 24; probe.height = Math.max(2, Math.round((24 * h) / w));
+  const px = probe.getContext('2d', { willReadFrequently: true });
+  px.drawImage(img, 0, 0, probe.width, probe.height);
+  const pd = px.getImageData(0, 0, probe.width, probe.height).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let k = 0; k < pd.length; k += 4) if (pd[k + 3] > 200) { r += pd[k]; g += pd[k + 1]; b += pd[k + 2]; n++; }
+  const mean = n ? `rgb(${(r / n) | 0},${(g / n) | 0},${(b / n) | 0})` : '#888';
+  const small = document.createElement('canvas');
+  small.width = 14; small.height = Math.max(2, Math.round((14 * h) / w));
+  const sx = small.getContext('2d');
+  sx.fillStyle = mean; sx.fillRect(0, 0, small.width, small.height);
+  sx.drawImage(img, 0, 0, small.width, small.height);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.imageSmoothingEnabled = true;
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(small, 0, 0, w, h);
+  x.fillStyle = 'rgba(20,18,16,0.12)';
+  x.fillRect(0, 0, w, h);
+  x.globalCompositeOperation = 'destination-in';
+  x.drawImage(img, 0, 0, w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// ── State ───────────────────────────────────────────
+let mode = 'arara';
+let TOPS = [], ACCS = [];
+const rack = [];
+const pickables = [];
+let table = null;
+let accIdx = 0;
+const accMeshes = [];
+let focus = -1;
+let cand = -1, candSince = 0;
+let hoverLocked = false, lockMove = 0;
+let orbit = 0, orbitV = 0;
+const pointer = { ndc: new THREE.Vector2(), inside: false, moved: false, dx: 0, dy: 0, lastX: 0, lastY: 0, has: false };
+const ray = new THREE.Raycaster();
+const look = CAM_LOOK.clone();
+const camPos = new THREE.Vector3();
+let fov = BASE_FOV;
+const par = new THREE.Vector2();
+
+function rackCamPos() { return CAM_LOOK.clone().addScaledVector(CAM_DIR, CAM_DIST); }
+function faceYaw(x) { const cp = rackCamPos(); return Math.atan2(cp.x - x, cp.z); }
+
+function layout() {
+  const n = rack.length;
+  const xs = [0];
+  for (let k = 1; k < n; k++) {
+    let p = PITCH;
+    if (focus >= 0 && (k === focus || k - 1 === focus)) {
+      const g = rack[focus];
+      p = 0.08 + g.reach * Math.abs(Math.cos(faceYaw(0))) + 0.03;
+    }
+    xs.push(xs[k - 1] + p);
+  }
+  const mid = (xs[0] + xs[n - 1]) / 2;
+  rack.forEach((g, k) => {
+    g.tx = xs[k] - mid;
+    g.tyaw = k === focus ? faceYaw(g.tx) : g.yawRest;
+    g.slab = k === focus ? 0.05 : 0.035;
+  });
+}
+
+// ── UI ──────────────────────────────────────────────
+const infoEl = $('info'), idxEl = $('idx'), nameEl = $('name'), kindEl = $('kind'), hintEl = $('hint'), ctrlsEl = $('ctrls');
+const pad2 = (n) => String(n).padStart(2, '0');
+const RACK_HINT = coarse ? 'Toque numa peça · deslize para trocar' : 'Passe o mouse numa peça · role para trocar';
+let infoTimer = 0;
+function setInfo() {
+  infoEl.classList.add('swap');
+  clearTimeout(infoTimer);
+  infoTimer = setTimeout(() => {
+    if (mode === 'mesa') {
+      const p = ACCS[accIdx];
+      idxEl.innerHTML = `Acessórios · <b>${pad2(accIdx + 1)}</b> / ${pad2(ACCS.length)}`;
+      nameEl.textContent = p.name;
+      kindEl.textContent = ACC_KINDS[p.kind];
+    } else if (focus < 0) {
+      idxEl.textContent = 'Arara';
+      nameEl.textContent = 'Coleção';
+      kindEl.textContent = `${rack.length} peças no cabide`;
+    } else {
+      const p = rack[focus].piece;
+      idxEl.innerHTML = `<b>${pad2(focus + 1)}</b> / ${pad2(rack.length)}`;
+      nameEl.textContent = p.name;
+      kindEl.textContent = KINDS[p.kind].label + (p.note ? ` · ${p.note}` : '');
+    }
+    $('accVal').textContent = ACCS[accIdx] ? ACCS[accIdx].name : '';
+    infoEl.classList.remove('swap');
+  }, 180);
+}
+
+function setFocus(i) {
+  if (i === focus) return;
+  focus = i;
+  layout();
+  setInfo();
+}
+
+function setAcc(i) {
+  const n = ACCS.length;
+  accIdx = ((i % n) + n) % n;
+  accMeshes.forEach((m, k) => { m.visible = k === accIdx; });
+  setInfo();
+}
+
+function setMode(m) {
+  if (m === mode) return;
+  mode = m;
+  $('modeArara').setAttribute('aria-pressed', String(m === 'arara'));
+  $('modeMesa').setAttribute('aria-pressed', String(m === 'mesa'));
+  ctrlsEl.hidden = m !== 'mesa';
+  hintEl.textContent = m === 'mesa' ? 'Arraste para girar · role para trocar' : RACK_HINT;
+  canvas.classList.toggle('grab', m === 'mesa');
+  canvas.classList.remove('over');
+  orbit = 0; orbitV = 0;
+  setInfo();
+}
+
+function step(dir) {
+  if (mode === 'mesa') { setAcc(accIdx + dir); return; }
+  const n = rack.length;
+  const next = focus < 0 ? (dir > 0 ? 0 : n - 1) : (focus + dir + n) % n;
+  hoverLocked = true; lockMove = 0;
+  setFocus(next);
+}
+
+function pick() {
+  ray.setFromCamera(pointer.ndc, camera);
+  const hits = ray.intersectObjects(pickables, false);
+  for (const h of hits) {
+    const g = h.object.userData.g;
+    if (h.uv && g.alphaAt(h.uv) > 0.5) return g.index;
+  }
+  return -1;
+}
+
+$('modeArara').addEventListener('click', () => setMode('arara'));
+$('modeMesa').addEventListener('click', () => setMode('mesa'));
+$('accPrev').addEventListener('click', () => setAcc(accIdx - 1));
+$('accNext').addEventListener('click', () => setAcc(accIdx + 1));
+
+const setNdc = (e) => {
+  const r = canvas.getBoundingClientRect();
+  pointer.ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+};
+let down = null;
+canvas.addEventListener('pointermove', (e) => {
+  setNdc(e);
+  if (pointer.has) { pointer.dx += e.clientX - pointer.lastX; pointer.dy += e.clientY - pointer.lastY; }
+  if (down && mode === 'mesa') {
+    orbitV = (e.clientX - pointer.lastX) * 0.005;
+    orbit = clamp(orbit + orbitV, -T_ORBIT, T_ORBIT);
+  }
+  pointer.lastX = e.clientX; pointer.lastY = e.clientY; pointer.has = true;
+  pointer.inside = true; pointer.moved = true;
+  if (hoverLocked) { lockMove += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); if (lockMove > 40) hoverLocked = false; }
+});
+canvas.addEventListener('pointerleave', () => { pointer.inside = false; pointer.has = false; cand = -1; candSince = performance.now(); });
+canvas.addEventListener('pointerdown', (e) => {
+  down = { x: e.clientX, y: e.clientY };
+  pointer.lastX = e.clientX; pointer.lastY = e.clientY;
+  if (mode === 'mesa') { canvas.classList.add('grabbing'); canvas.setPointerCapture(e.pointerId); }
+});
+canvas.addEventListener('pointerup', (e) => {
+  canvas.classList.remove('grabbing');
+  if (!down) return;
+  const dx = e.clientX - down.x, dy = e.clientY - down.y;
+  down = null;
+  if (e.pointerType !== 'mouse') pointer.has = false;
+  if (mode === 'mesa' || e.pointerType === 'mouse') return;
+  if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) { step(dx < 0 ? 1 : -1); return; }
+  if (Math.hypot(dx, dy) > 10) return;
+  setNdc(e);
+  const h = pick();
+  setFocus(h === focus ? -1 : h);
+});
+
+let wheelAcc = 0, wheelT = 0;
+addEventListener('wheel', (e) => {
+  wheelAcc += Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+  const now = performance.now();
+  if (Math.abs(wheelAcc) > 40 && now - wheelT > 380) {
+    step(wheelAcc > 0 ? 1 : -1);
+    wheelAcc = 0; wheelT = now;
+  }
+}, { passive: true });
+
+addEventListener('keydown', (e) => {
+  if (e.target instanceof HTMLButtonElement && (e.key === 'Enter' || e.key === ' ')) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { step(1); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { step(-1); e.preventDefault(); }
+  else if (e.key === 'Escape') { if (mode === 'mesa') setMode('arara'); else setFocus(-1); }
+});
+
+// ── Camera ──────────────────────────────────────────
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+}
+addEventListener('resize', resize);
+resize();
+
+// The front of every piece is the only side with real detail, so the camera never swings round to the back.
+function frame(dt) {
+  const a = camera.aspect;
+  const k = 1 - Math.exp(-dt * 2.4);
+  const tl = new THREE.Vector3(), tp = new THREE.Vector3();
+  let tf;
+  if (mode === 'mesa') {
+    if (!down) { orbit += orbitV; orbitV *= 0.9; }
+    orbit = clamp(orbit, -T_ORBIT, T_ORBIT);
+    const az = T_AZ + orbit;
+    tl.copy(table.headWorld);
+    tl.y -= a < 0.9 ? 0.12 : 0.03;
+    tp.set(Math.sin(az) * Math.cos(T_EL), Math.sin(T_EL), Math.cos(az) * Math.cos(T_EL)).multiplyScalar(T_DIST).add(tl);
+    tf = Math.max(BASE_FOV, Math.min(60, 2 * Math.atan(0.26 / T_DIST / a) * (180 / Math.PI)));
+  } else {
+    tl.copy(CAM_LOOK);
+    let dist = CAM_DIST;
+    tf = Math.max(BASE_FOV, Math.min(70, 2 * Math.atan(0.72 / CAM_DIST / a) * (180 / Math.PI)));
+    if (focus >= 0) {
+      const g = rack[focus];
+      if (coarse || a < 0.9) {
+        tl.set(g.x, 1.12, 0);
+        tf = Math.max(BASE_FOV, Math.min(60, 2 * Math.atan(0.52 / CAM_DIST / a) * (180 / Math.PI)));
+        dist *= 0.9;
+      } else {
+        tl.x += g.x * 0.22;
+        tl.y += 0.04;
+      }
+    }
+    tp.copy(tl).addScaledVector(CAM_DIR, dist);
+    if (!coarse && pointer.inside) par.lerp(pointer.ndc, 1 - Math.exp(-dt * 2));
+    else par.multiplyScalar(Math.exp(-dt * 2));
+    tp.x += par.x * 0.12;
+    tp.y += par.y * 0.06;
+  }
+  look.lerp(tl, k);
+  camPos.lerp(tp, k);
+  fov += (tf - fov) * k;
+  camera.position.copy(camPos);
+  camera.fov = fov;
+  camera.updateProjectionMatrix();
+  camera.lookAt(look);
+  const sx = mode === 'arara' && focus >= 0 ? rack[focus].x * 0.7 : 0;
+  key.target.position.x += (sx - key.target.position.x) * k;
+}
+
+// ── Boot ────────────────────────────────────────────
+const failTimer = setTimeout(() => { $('loader').textContent = 'A cena está demorando para carregar…'; }, 15000);
+
+async function boot() {
+  const manifest = await (await fetch('pecas/pecas.json')).json();
+  TOPS = manifest.filter((p) => KINDS[p.kind]);
+  ACCS = manifest.filter((p) => ACC_KINDS[p.kind]);
+  const imgs = await Promise.all(manifest.map((p) => loadImg(p.file)));
+  const assets = {};
+  manifest.forEach((p, k) => { assets[p.key] = { img: imgs[k], tex: frontTexture(imgs[k]), back: backTexture(imgs[k]) }; });
+  $('count').textContent = `${pad2(TOPS.length)} peças · ${pad2(ACCS.length)} acessórios`;
+
+  TOPS.forEach((p, k) => {
+    const a = assets[p.key];
+    const g = new RackGarment(p, a.img, k, a.tex, a.back);
+    rack.push(g);
+    pickables.push(g.front, g.back);
+  });
+  layout();
+  const target = rack.map((g) => g.tx);
+  rack.forEach((g, k) => {
+    g.place(reduce ? g.tx : 0.7 + k * 0.02);
+    g.tx = target[k];
+    for (let s = 0; s < 140; s++) g.simulate(FIXED, s * FIXED, 0.94);
+  });
+  const now = performance.now() / 1000;
+  rack.forEach((g, k) => { g.releaseAt = now + 0.35 + (rack.length - 1 - k) * 0.1; });
+
+  table = new DisplayTable(TABLE.x, TABLE.z);
+  for (const p of ACCS) {
+    const a = assets[p.key];
+    const m = p.kind === 'touca' ? makeBeanie(a.img, a.tex) : makeCap(a.img, a.tex, a.back);
+    table.headG.add(m);
+    accMeshes.push(m);
+  }
+  setAcc(0);
+
+  camPos.copy(rackCamPos());
+  clearTimeout(failTimer);
+  $('loader').classList.add('done');
+  hintEl.textContent = RACK_HINT;
+  setInfo();
+  if (location.hash === '#acessorios') setMode('mesa');
+  requestAnimationFrame(loop);
+}
+
+let last = performance.now() / 1000, acc = 0, simT = 0, pickTick = 0;
+const v3 = new THREE.Vector3(), right = new THREE.Vector3(), up = new THREE.Vector3(), fwd = new THREE.Vector3();
+function loop() {
+  const now = performance.now() / 1000;
+  const dt = Math.min(0.05, now - last);
+  last = now;
+  acc += dt;
+  let steps = 0;
+  const showRack = mode === 'arara' || camPos.distanceTo(rackCamPos()) < 2.5;
+  while (acc >= FIXED && steps < 3) {
+    simT += FIXED;
+    for (const g of rack) { g.dynamics(FIXED, now); if (showRack) g.simulate(FIXED, simT); }
+    acc -= FIXED; steps++;
+  }
+  if (steps === 3) acc = 0;
+
+  frame(dt);
+
+  if (mode === 'arara' && pointer.moved && (pointer.dx || pointer.dy)) {
+    ray.setFromCamera(pointer.ndc, camera);
+    camera.matrixWorld.extractBasis(right, up, fwd);
+    const wpp = (2 * CAM_DIST * Math.tan((camera.fov * Math.PI) / 360)) / innerHeight;
+    const mag = Math.hypot(pointer.dx, pointer.dy);
+    v3.copy(right).multiplyScalar(pointer.dx * wpp * 0.45).addScaledVector(up, -pointer.dy * wpp * 0.45).addScaledVector(fwd, -mag * wpp * 0.2);
+    if (v3.length() > 0.02) v3.setLength(0.02);
+    for (const g of rack) g.brush(ray.ray.origin, ray.ray.direction, v3, 0.085);
+  }
+  pointer.dx = pointer.dy = 0;
+
+  if (showRack) for (const g of rack) g.updateMesh();
+
+  if (mode === 'arara' && !coarse && (pointer.moved || (pointer.inside && (++pickTick & 1)))) {
+    const h = pointer.inside ? pick() : -1;
+    if (h !== cand) { cand = h; candSince = now; }
+    canvas.classList.toggle('over', h >= 0);
+  }
+  pointer.moved = false;
+  if (mode === 'arara' && !coarse && !hoverLocked && cand !== focus) {
+    const wait = cand < 0 ? 0.5 : 0.09;
+    if (now - candSince > wait) setFocus(cand);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+boot().catch((e) => {
+  console.error(e);
+  $('loader').textContent = 'Não foi possível carregar as peças.';
+});
+</script>
