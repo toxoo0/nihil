@@ -54,7 +54,8 @@ html {
 }
 
 a,
-button {
+button,
+.peca-palco.com-link {
   cursor: url("assets/cursor.png") 17 1, pointer;
   cursor: -webkit-image-set(url("assets/cursor.png") 1x, url("assets/cursor@2x.png") 2x) 17 1, pointer;
 }
@@ -622,25 +623,65 @@ body.menu-open .arcade {
 
 @media (max-width: 760px) {
   .view-home {
-    padding: 110px 20px 150px;   /* abaixo do símbolo da paz */
+    padding: 92px 20px 40px;   /* logo abaixo do cabeçalho; o arcade vem no fim da página */
   }
 
   .vitrine-layout {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* Tipos: uma linha só, que rola de lado e fica presa logo abaixo do cabeçalho,
+     para trocar de tipo em qualquer ponto da página */
   .tipos {
-    position: static;
+    position: sticky;
+    top: 86px;
+    z-index: 10;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px 18px;
-    padding-top: 0;
-    margin-bottom: 28px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 22px;
+    margin: 0 -20px 24px;
+    padding: 8px 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Some aos poucos na direita: mostra que há mais tipos ao deslizar */
+    -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent);
+    mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent);
+    background: rgba(255, 255, 255, 0.92);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+
+  .tipos::-webkit-scrollbar {
+    display: none;
   }
 
   .tipos button {
-    font-size: 0.74rem;
+    flex: none;
+    padding: 6px 0;
+    font-size: 0.78rem;
+  }
+
+  /* Espaço da peça um pouco mais baixo: menos vazio entre a roupa e o nome */
+  .peca-palco {
+    aspect-ratio: 1 / 0.86;
+  }
+
+  /* Tipo numa linha, edição e tamanhos na outra: os cartões lado a lado ficam alinhados */
+  .peca-meta span {
+    display: block;
+  }
+
+  .peca-meta .peca-meta-sep {
+    display: none;
+  }
+
+  /* Botão da largura do cartão e mais alto: fácil de acertar com o dedo */
+  .peca-comprar {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 0 11px;
   }
 
   .archive {
@@ -669,28 +710,49 @@ body.menu-open .arcade {
     font-size: 0.72rem;
   }
 
+  /* Barra frente/verso maior para o dedo */
   .giro {
     gap: 6px;
-    padding: 6px 4px;
-    font-size: 0.58rem;
+    padding: 12px 4px;
+    font-size: 0.6rem;
   }
 
   .giro-barra {
-    width: 52px;
+    width: 64px;
   }
 
+  .giro-pino {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Arcade: no fim da página, com o nome à mostra (no celular não há cursor para revelá-lo)
+     e sem ficar por cima das peças */
   .arcade {
-    left: 14px;
-    bottom: 14px;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: max-content;
+    margin: 24px auto 48px;
   }
 
   .arcade-sprite {
-    width: 60px;
-    height: 105px;
+    width: 72px;
+    height: 126px;
+  }
+
+  .arcade-label {
+    position: static;
+    opacity: 1;
+    transform: none;
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 760px) {
   .topbar {
     padding: 16px 20px;
   }
@@ -704,10 +766,17 @@ body.menu-open .arcade {
   .peace {
     top: 16px;
     right: 20px;
+    width: 54px;
+    height: 54px;
+  }
+
+  .peace .peace-line {
+    width: 46px;
+    height: 46px;
   }
 
   .menu {
-    top: 104px;
+    top: 96px;
     right: 20px;
   }
 

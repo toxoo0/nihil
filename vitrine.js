@@ -136,7 +136,15 @@ function buildGrid() {
     name.textContent = p.name;
     const meta = document.createElement('p');
     meta.className = 'peca-meta';
-    meta.textContent = `${kind.label} · ${p.edition === 'serie' ? 'Série' : '1of1'} · ${p.sizes || 'Único'}`;
+    // Duas partes (tipo · edição e tamanhos): no celular cada uma ocupa uma linha, alinhando os cartões.
+    const metaTipo = document.createElement('span');
+    metaTipo.textContent = kind.label;
+    const metaSep = document.createElement('span');
+    metaSep.className = 'peca-meta-sep';
+    metaSep.textContent = ' · ';
+    const metaDet = document.createElement('span');
+    metaDet.textContent = `${p.edition === 'serie' ? 'Série' : '1of1'} · ${p.sizes || 'Único'}`;
+    meta.append(metaTipo, metaSep, metaDet);
     let buy;
     if (!esgotada && p.loja) {
       buy = document.createElement('a');
@@ -171,6 +179,14 @@ function buildGrid() {
       if (cell.lastX !== null) g.thv += clamp((e.clientX - cell.lastX) * 0.004, -0.25, 0.25);
       cell.lastX = e.clientX;
     });
+    // Clicar na própria roupa (fora da barra frente/verso) abre a página de compra, igual ao botão.
+    if (buy.href) {
+      stage.classList.add('com-link');
+      stage.addEventListener('click', (e) => {
+        if (e.target.closest('.giro')) return;
+        window.open(buy.href, '_blank', 'noopener');
+      });
+    }
     li.addEventListener('focusin', () => setFocus(i));
     li.addEventListener('focusout', () => setFocus(-1));
   });
