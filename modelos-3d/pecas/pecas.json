@@ -60,7 +60,7 @@
         "chestFrac": 0.5941,
         "edition": "serie",
         "sizes": "P, M, G",
-        "loja": "",
+        "loja": "https://nihil9.lojavirtualnuvem.com.br/produtos/camiseta-boxy-buda-gordo/",
         "disponivel": true
     },
     {
@@ -112,7 +112,8 @@
         "chestFrac": 0.6507,
         "edition": "serie",
         "sizes": "P, M, G",
-        "loja": ""
+        "loja": "https://nihil9.lojavirtualnuvem.com.br/produtos/om-airbrushed-baby-tee-sqvyk/",
+        "disponivel": true
     },
     {
         "key": "buda-fem",
@@ -124,7 +125,7 @@
         "chestFrac": 0.6373,
         "edition": "serie",
         "sizes": "P, M, G",
-        "loja": "",
+        "loja": "https://nihil9.lojavirtualnuvem.com.br/produtos/baby-tee-buda-gordo/",
         "disponivel": true
     },
     {
@@ -164,7 +165,7 @@
         "chest": 0.46,
         "edition": "1of1",
         "sizes": "Único",
-        "loja": "",
+        "loja": "https://nihil9.lojavirtualnuvem.com.br/produtos/calca-tigo-zei-2-red-stain-ysl-bootleg/",
         "disponivel": true
     },
     {
