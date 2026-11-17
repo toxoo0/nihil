@@ -23,7 +23,7 @@ export const KINDS = {
   touca:         { label: 'Touca', chest: 0.25, hanger: 0.05, depth: 0.012, memory: 0.08, line: 0.3, slope: 0.004, taper: 0.03, istep: 0.012, acc: true },
   // Calças: "chest" é a largura do cós; começam mostrando o verso (startBack).
   calca:         { label: 'Calça', chest: 0.46, hanger: 0.2, neck: 0.08, depth: 0.02, slope: 0, startBack: true, clips: true },
-  bone:          { label: 'Boné',  chest: 0.26, depth: 0.03, round: 0.05, bend: 0.22, line: 0.3, istep: 0.01, rigid: true, acc: true },
+  bone:          { label: 'Cap',   chest: 0.26, depth: 0.03, round: 0.05, bend: 0.22, line: 0.3, istep: 0.01, rigid: true, acc: true },
 };
 
 export const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;

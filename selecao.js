@@ -407,19 +407,20 @@ function setInfo() {
     const rows = [['Tipo', p.edition === 'serie' ? 'Série' : '1of1'], ['Tamanho', p.sizes || 'Único']];
     statsEl.innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
     infoEl.classList.toggle('legend', p.edition !== 'serie');
-    // Botão de compra: abre a página da peça na plataforma de vendas; sem link, fica "Em breve".
+    // Botão de compra, igual à home: peça à venda ("disponivel" no pecas.json) mostra "Comprar" e abre a
+    // página dela na Nuvemshop; o resto é archive e fica "Esgotado".
     const buy = $('buy');
-    if (p.loja) {
+    const esgotada = PIECES.some((q) => q.disponivel) && !p.disponivel;
+    if (!esgotada && p.loja) {
       buy.href = p.loja;
       buy.removeAttribute('aria-disabled');
       buy.setAttribute('aria-label', `Comprar ${p.name}`);
-      $('buy-txt').textContent = 'Comprar';
     } else {
       buy.removeAttribute('href');
       buy.setAttribute('aria-disabled', 'true');
       buy.removeAttribute('aria-label');
-      $('buy-txt').textContent = 'Em breve';
     }
+    $('buy-txt').textContent = esgotada ? 'Esgotado' : 'Comprar';
     infoEl.classList.remove('swap');
   }, 160);
   history.replaceState(null, '', `#${p.key}`);

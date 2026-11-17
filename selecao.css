@@ -298,56 +298,68 @@ a:focus-visible {
   color: #fff;
 }
 
-/* Botão de compra: botão de jogo com sombra dura, na cor da faixa (roxo na série, dourado na 1of1) */
+/* Botão de compra: botão de fliperama verde (o mesmo verde do "Comprar" da home), grande, com sombra
+   dura que some ao apertar. A setinha pisca para chamar o clique. */
 .buy {
+  --verde: #00ff1e;
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px 9px 18px;
-  background: linear-gradient(90deg, var(--purple), var(--purple-2));
-  border: 2px solid #fff;
-  box-shadow: 4px 4px 0 rgba(4, 8, 48, 0.85);
-  color: #fff;
+  justify-content: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 14px 22px 13px 24px;
+  background: var(--verde);
+  border: 3px solid #fff;
+  box-shadow: 5px 5px 0 rgba(4, 8, 48, 0.9), inset 0 -4px 0 rgba(0, 90, 10, 0.35);
+  color: #071040;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 1.05rem;
-  letter-spacing: 0.06em;
+  font-size: 1.2rem;
+  letter-spacing: 0.08em;
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-}
-
-.card.legend .buy {
-  background: linear-gradient(90deg, var(--gold), var(--gold-2));
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .buy svg {
-  width: 8px;
-  height: 14px;
+  width: 9px;
+  height: 16px;
   fill: currentColor;
   shape-rendering: crispEdges;
   transition: transform 0.12s ease;
 }
 
-.buy[href]:hover {
+.buy[href] svg {
+  animation: buy-seta 0.9s steps(1, end) infinite;
+}
+
+@keyframes buy-seta {
+  50% { transform: translateX(4px); }
+}
+
+.buy[href]:hover,
+.buy[href]:focus-visible {
+  background: #6dff7f;
   transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0 rgba(4, 8, 48, 0.85);
+  box-shadow: 7px 7px 0 rgba(4, 8, 48, 0.9), inset 0 -4px 0 rgba(0, 90, 10, 0.35);
 }
 
-.buy[href]:hover svg {
-  transform: translateX(3px);
+.buy[href]:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
 }
 
+/* Apertado: afunda até onde estava a sombra */
 .buy[href]:active {
-  transform: translate(4px, 4px);
-  box-shadow: 0 0 0 rgba(4, 8, 48, 0.85);
+  transform: translate(5px, 5px);
+  box-shadow: 0 0 0 rgba(4, 8, 48, 0.9), inset 0 3px 0 rgba(0, 90, 10, 0.35);
 }
 
-/* Sem link na plataforma ainda */
-.buy[aria-disabled="true"],
-.card.legend .buy[aria-disabled="true"] {
+/* Esgotado (archive): só o contorno tracejado, sem cara de botão */
+.buy[aria-disabled="true"] {
   background: transparent;
   border: 2px dashed rgba(255, 255, 255, 0.45);
   box-shadow: none;
@@ -604,15 +616,15 @@ a:focus-visible {
   }
 
   .buy {
-    padding: 6px 10px 5px 12px;
-    font-size: 0.78rem;
-    gap: 7px;
-    box-shadow: 3px 3px 0 rgba(4, 8, 48, 0.85);
+    min-height: 40px;
+    padding: 8px 14px 7px 16px;
+    font-size: 0.9rem;
+    gap: 8px;
   }
 
   .buy svg {
-    width: 6px;
-    height: 10px;
+    width: 7px;
+    height: 12px;
   }
 }
 
@@ -667,9 +679,10 @@ a:focus-visible {
   }
 
   .buy {
-    padding: 8px 12px 7px 14px;
-    font-size: 0.9rem;
-    gap: 8px;
+    min-height: 48px;
+    padding: 12px 18px 11px 20px;
+    font-size: 1.05rem;
+    gap: 10px;
   }
 
   .picker {
@@ -700,7 +713,8 @@ a:focus-visible {
     transition: none;
   }
 
-  .slot[aria-current="true"]::before {
+  .slot[aria-current="true"]::before,
+  .buy[href] svg {
     animation: none;
   }
 }
