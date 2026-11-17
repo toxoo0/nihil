@@ -480,6 +480,215 @@ body.menu-open .arcade {
   pointer-events: none;
 }
 
+/* Em construção: tela no lugar de Manifesto, História e Blog até a senha. Amarelo de obra, fitas
+   de isolamento correndo nas diagonais e o título grande com ink bleed. */
+.obra {
+  --amarelo: #ffd400;
+  position: relative;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);   /* a coluna nunca passa da tela (o texto quebra) */
+  place-items: center;
+  padding: 140px 24px 120px;
+  overflow: hidden;
+  background: var(--amarelo);
+}
+
+.obra[hidden] {
+  display: none;
+}
+
+body:has(.obra:not([hidden])) {
+  background: #ffd400;
+}
+
+/* Fita de isolamento: listras pretas e amarelas nas bordas, texto correndo no meio */
+.obra-fita {
+  position: absolute;
+  left: -10%;
+  width: 120%;
+  display: flex;
+  overflow: hidden;
+  padding: 10px 0;
+  background: #111;
+  color: var(--amarelo);
+  font-family: var(--display);
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border-block: 10px solid transparent;
+  border-image: repeating-linear-gradient(-45deg, #111 0 14px, var(--amarelo) 14px 28px) 10;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+.obra-fita span {
+  flex: none;
+  padding-right: 0.6em;
+  animation: obra-corre 26s linear infinite;
+}
+
+.obra-fita-cima {
+  top: 96px;
+  transform: rotate(-4deg);
+}
+
+.obra-fita-baixo {
+  bottom: 70px;
+  transform: rotate(3deg);
+}
+
+.obra-fita-baixo span {
+  animation-direction: reverse;
+}
+
+@keyframes obra-corre {
+  to { transform: translateX(-100%); }
+}
+
+.obra-centro {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  text-align: center;
+}
+
+.obra-pagina {
+  font-size: 0.85rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.obra-titulo {
+  margin: 6px 0 14px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(2.6rem, 9vw, 5.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  filter: var(--ink-fx);
+}
+
+.obra-texto {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* Caixa da senha: preta, como uma placa de aviso */
+.obra-senha {
+  margin: 34px auto 0;
+  width: min(380px, 100%);
+  padding: 18px 18px 14px;
+  background: #111;
+  color: var(--amarelo);
+  text-align: left;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.25);
+}
+
+.obra-senha label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.obra-linha {
+  display: flex;
+  gap: 8px;
+}
+
+.obra-linha input {
+  flex: 1;
+  min-width: 0;
+  height: 46px;
+  padding: 0 14px;
+  border: 2px solid var(--amarelo);
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  outline: none;
+}
+
+.obra-linha input::placeholder {
+  color: rgba(255, 212, 0, 0.45);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.8rem;
+}
+
+.obra-linha input:focus {
+  border-color: #fff;
+}
+
+.obra-linha button {
+  flex: none;
+  height: 46px;
+  padding: 0 18px;
+  background: var(--amarelo);
+  color: #111;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: transform 0.1s ease;
+}
+
+.obra-linha button:hover {
+  background: #fff;
+}
+
+.obra-linha button:active {
+  transform: translateY(2px);
+}
+
+.obra-erro {
+  min-height: 1.4em;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  color: #ff6b5a;
+}
+
+.obra-senha.treme {
+  animation: obra-treme 0.4s ease;
+}
+
+@keyframes obra-treme {
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+@media (max-width: 760px) {
+  .obra {
+    padding: 120px 20px 110px;
+  }
+
+  .obra-fita {
+    font-size: 0.75rem;
+    padding: 7px 0;
+  }
+
+  .obra-fita-cima {
+    top: 92px;
+  }
+
+  .obra-fita-baixo {
+    bottom: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .obra-fita span,
+  .obra-senha.treme {
+    animation: none;
+  }
+}
+
 /* Páginas internas */
 
 .page {
